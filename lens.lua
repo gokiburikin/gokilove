@@ -17,7 +17,8 @@ lens.event = function()
 		end
 	end
 
-	event.attach = function(key, callback)
+	event.attach = function(callback, key)
+		key = key or callback
 		event.callbacks[key] = callback
 	end
 

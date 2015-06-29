@@ -28,6 +28,12 @@ ssda.attach = function(filePath, x, y, width, height, name, registrationX, regis
 	end
 end
 
+ssda.attachSet = function(filePath, x, y, width, height, names, registrationX, registrationY )
+	for k,v in ipairs(names) do
+		ssda.attach(filePath,x + width * (k-1),y,width,height,v,registrationX,registrationY)
+	end
+end
+
 ssda.attachImage = function(filePath, name, registrationX, registrationY)
 	registrationX = registrationX or 0
 	registrationY = registrationY or 0
