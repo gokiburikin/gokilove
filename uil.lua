@@ -1,7 +1,6 @@
 --[[ User Interface Library ]]
 
 local uil = {}
-local lens = require("lens")
 function uil.new()
 	local ui = {}
 	ui.controls = {}

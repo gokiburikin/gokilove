@@ -47,4 +47,9 @@ qml.wrapAngle = function(radianAngle)
 	return radianAngle
 end
 
+qml.random = function(min,max,decimals)
+	local multiplier = math.pow(10,decimals or 0)
+	return love.math.random(min*multiplier,max*multiplier)/multiplier
+end
+
 return qml
