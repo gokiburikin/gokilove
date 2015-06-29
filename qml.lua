@@ -1,3 +1,5 @@
+--[[ Quick Math Library ]]
+
 local qml = {}
 
 qml.distance = function(x1,y1,x2,y2)

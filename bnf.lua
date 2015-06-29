@@ -1,3 +1,5 @@
+--[[ Big Number Formatting ]]
+
 local bnf = {}
 bnf.precision = 2
 bnf.symbols = {}

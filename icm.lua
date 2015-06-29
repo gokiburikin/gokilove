@@ -1,4 +1,4 @@
---[[Improved Color Management]]
+--[[ Improved Color Management ]]
 
 local icm = {}
 icm.colors = {}

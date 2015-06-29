@@ -1,4 +1,4 @@
---[[Little Event and Notification System]]
+--[[ Little Event and Notification System ]]
 
 local lens = {}
 lens.events = {}

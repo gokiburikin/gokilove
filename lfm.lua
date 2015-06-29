@@ -1,4 +1,4 @@
---[[Little Font Manager]]
+--[[ Little Font Manager ]]
 
 local lfm = {}
 lfm.fonts = {}
