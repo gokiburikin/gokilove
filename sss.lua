@@ -34,7 +34,7 @@ function sss.sort()
 	end)
 end
 
-function sss.attach(state,id)
+function sss.attach(state,id,enabled)
 	id = id or state
 	if state.order == nil then
 		state.order = sss.autoOrder
@@ -43,7 +43,11 @@ function sss.attach(state,id)
 	sss.states[id] = state
 	table.insert(sss.dictionary,id)
 	sss.sort()
-	if sss.autoEnable then
+	if enabled == nil then
+		if sss.autoEnable then
+			sss.enable(id)
+		end
+	elseif enabled then
 		sss.enable(id)
 	end
 	if state.load ~= nil then

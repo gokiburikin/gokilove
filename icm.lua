@@ -4,6 +4,15 @@ local icm = {}
 icm.colors = {}
 icm.inverted = false
 
+icm.mix = function(colorA, colorB, percent)
+	return {
+		r=colorA.r + (colorB.r - colorA.r) * percent,
+		g=colorA.g + (colorB.g - colorA.g) * percent,
+		b=colorA.b + (colorB.b - colorA.b) * percent,
+		a=colorA.a + (colorB.a - colorA.a) * percent
+	}
+end
+
 icm.getColor = function(r,g,b,a)
 	if not icm.inverted then
 		return {r=r,g=g,b=b,a=a}
@@ -42,7 +51,13 @@ icm.set = function(name)
 	local color = icm.get(name)
 	if color ~= nil then
 		icm.setColor(color)
+	else
+		icm.setColor(name)
 	end
+end
+
+icm.random = function()
+	return icm.getColor(love.math.random(0,255),love.math.random(0,255),love.math.random(0,255),255)
 end
 
 icm.color = function(r,g,b,a)

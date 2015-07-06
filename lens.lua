@@ -29,7 +29,8 @@ lens.event = function()
 	return event
 end
 
-lens.attach = function(name,event)
+lens.attach = function(event,name)
+	name = name or event
 	lens.events[name] = event
 end
 

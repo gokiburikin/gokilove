@@ -37,7 +37,7 @@ end
 ssda.attachImage = function(filePath, name, registrationX, registrationY)
 	registrationX = registrationX or 0
 	registrationY = registrationY or 0
-	ssda.add(filePath, 0,0, nil, nil, name, registrationX, registrationY)
+	ssda.attach(filePath, 0,0, nil, nil, name, registrationX, registrationY)
 end
 
 ssda.get = function(name)
