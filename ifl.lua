@@ -15,7 +15,9 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 	imageFont.lineSpacing = lineSpacing or 0
 	imageFont.height = imageFont.image:getHeight()
 	imageFont.batch = love.graphics.newSpriteBatch(imageFont.image,10000,"static")
-	imageFont.kerning = kerning or {}
+	imageFont.kerning = kerning or nil
+	imageFont.lastText = ""
+	imageFont.lastFunction = nil
 
 	local glyphIndex = 1
 	local currentGlyphLeft = -1
@@ -57,7 +59,7 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 	end
 
 	function imageFont.getLines(text,wrapLimit)
-		local lines = {}
+		local lineCount = 0
 
 		local lastBreakIndex = 1
 		local nextBreakIndex = 1
@@ -67,10 +69,12 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 		local nextBreakWidth = 0
 		for i=1,#text,1 do
 			-- Get the kerning offset for any kerning sets
-			local kernOffset = {x=0,y=0}
-			for k,v in pairs(imageFont.kerning) do
-				if text:sub(i,i+#k-1) == k then
-					kernOffset = v
+			local kernOffset = 0
+			if imageFont.kerning ~= nil then
+				for k,v in pairs(imageFont.kerning) do
+					if text:sub(i,i+#k-1) == k then
+						kernOffset = v
+					end
 				end
 			end
 
@@ -79,9 +83,7 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 			
 			-- If the character is a new line, force a line break and reset line width
 			if text:sub(i,i) == "\n" then
-				if lastBreakIndex ~= nextBreakIndex then
-					table.insert(lines, text:sub(lastBreakIndex,i))
-				end
+				lineCount = lineCount + 1
 				lastBreakIndex = i
 				nextBreakIndex = i
 				nextBreakWidth = lineWidth
@@ -89,11 +91,11 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 			-- If the glyph data is found
 			elseif glyph ~= nil then
 				-- Increase the line width by the width of the glyph, the fonts character spacing, and the kerning offset if any
-				lineWidth = lineWidth + glyph.width + imageFont.characterSpacing + kernOffset.x
+				lineWidth = lineWidth + glyph.width + imageFont.characterSpacing + kernOffset
 				-- If the new line width is bigger than the wrap limit
 				if lineWidth > wrapLimit and lastBreakIndex ~= nextBreakIndex then
-					-- Add the text from the previous break to the closest wrap safe break to the line
-					table.insert(lines, text:sub(lastBreakIndex,nextBreakIndex-1))
+					-- Increase line count
+					lineCount = lineCount + 1
 					-- Set the previous break to the closest wrap safe break
 					lastBreakIndex = nextBreakIndex + 1
 					-- Subtract the width of the added line from the current line width
@@ -108,14 +110,13 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 			end
 
 			if i == #text then
-				table.insert(lines, text:sub(lastBreakIndex,i))
 				nextBreakWidth = lineWidth 
 			end
 			if nextBreakWidth > width then
 				width = nextBreakWidth
 			end
 		end
-		return width,(imageFont.height + imageFont.lineSpacing)*#lines - imageFont.lineSpacing,#lines
+		return width,(imageFont.height + imageFont.lineSpacing)*lineCount - imageFont.lineSpacing,lineCount
 	end
 
 	ifl.fonts[key]  = imageFont
@@ -138,19 +139,28 @@ function ifl.print(text,x,y,key)
 
 	if font ~= nil then
 		local batch = font.batch
-		local glyphX = x
-		local glyphY = y
+		if text == font.lastText and font.lastFunction == "print" then
+			love.graphics.draw(batch,x,y)
+			return
+		end
+		font.lastFunction = "print"
+		font.lastText = text
+		batch:clear()
+		local glyphX = 0
+		local glyphY = 0
 		for i=1,#text,1 do
 			local character = text:sub(i,i)
 			local kernOffset = 0
-			for k,v in pairs(font.kerning) do
-				if text:sub(i,i+#k-1) == k then
-					kernOffset = v
+			if font.kerning ~= nil then
+				for k,v in pairs(font.kerning) do
+					if text:sub(i,i+#k-1) == k then
+						kernOffset = v
+					end
 				end
 			end
 			local glyph = font.glyphs[character]
 			if character == "\n" then
-				glyphX = x
+				glyphX = 0
 				glyphY = glyphY + font.height + font.lineSpacing
 			elseif glyph ~= nil then
 				--love.graphics.draw(font.image,glyph.quad,glyphX,glyphY)
@@ -158,8 +168,7 @@ function ifl.print(text,x,y,key)
 				glyphX = glyphX + glyph.width + font.characterSpacing + kernOffset
 			end
 		end
-		love.graphics.draw(batch,0,0)
-		batch:clear()
+		love.graphics.draw(batch,x,y)
 	else
 		love.graphics.print(text,x,y)
 	end
@@ -172,34 +181,46 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 	horizontalAlignment = horizontalAlignment or "left"
 	verticalAlignment = verticalAlignment or "top"
 	local font = ifl.fonts[key]
-
 	if font ~= nil then
 		local batch = font.batch
-		local glyphX = x
-		local glyphY = y
+		if text == font.lastText and font.lastFunction == "printf" then
+			love.graphics.draw(batch,x,y)
+			return
+		end
+		font.lastFunction = "printf"
+		font.lastText = text
+		batch:clear()
+
+		batch:bind()
+		local glyphX = 0
+		local glyphY = 0
 		local lines = {}
 		local lineWidths = {}
 
 		local lastBreakIndex = 1
 		local nextBreakIndex = 1
 		local nextBreakWidth = 0
+		local nextBreakWidthAfter = 0
 		local lineWidth = 0
 		for i=1,#text,1 do
-
 			local kernOffset = 0
-			for k,v in pairs(font.kerning) do
-				if text:sub(i,i+#k-1) == k then
-					kernOffset = v
+			if font.kerning ~= nil then
+				for k,v in pairs(font.kerning) do
+					if text:sub(i,i+#k-1) == k then
+						kernOffset = v
+					end
 				end
 			end
 
 			local glyph = font.glyphs[text:sub(i,i)]
 
+			if text:sub(i,i) == " " then
+				nextBreakIndex = i
+				nextBreakWidth = lineWidth 
+			end
 			if text:sub(i,i) == "\n" then
-				if lastBreakIndex ~= nextBreakIndex then
-					table.insert(lines, text:sub(lastBreakIndex,i))
-				end
-				table.insert(lineWidths, lineWidth)
+				table.insert(lines, text:sub(lastBreakIndex,i))
+				table.insert(lineWidths, lineWidth - font.characterSpacing)
 				lastBreakIndex = i
 				nextBreakIndex = i
 				nextBreakWidth = lineWidth
@@ -208,33 +229,34 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 				lineWidth = lineWidth + glyph.width + font.characterSpacing + kernOffset
 				if lineWidth > wrapLimit and lastBreakIndex ~= nextBreakIndex then
 					table.insert(lines, text:sub(lastBreakIndex,nextBreakIndex-1))
-					table.insert(lineWidths, nextBreakWidth)
-					lastBreakIndex = nextBreakIndex + 1
-					lineWidth = lineWidth - nextBreakWidth
+					table.insert(lineWidths, nextBreakWidth - font.characterSpacing )
+					lineWidth = lineWidth - nextBreakWidthAfter
+					lastBreakIndex = nextBreakIndex+1
 				end
 			end
-
 			if text:sub(i,i) == " " then
 				nextBreakIndex = i
-				nextBreakWidth = lineWidth
+				nextBreakWidthAfter = lineWidth 
 			end
 			
 			if i == #text then
 				table.insert(lines, text:sub(lastBreakIndex,i))
-				table.insert(lineWidths, nextBreakWidth)
+				table.insert(lineWidths, lineWidth - font.characterSpacing)
 			end
 		end
 
-		local glyphY = y
+		local glyphY = 0
 		if horizontalAlignment == "left" then
 			for i,line in ipairs(lines) do
-				glyphX = x
-				glyphY = glyphY + font.height + font.lineSpacing
+				glyphX = 0
+
 				for j=1,#line,1 do
 					local kernOffset = 0
-					for k,v in pairs(font.kerning) do
-						if text:sub(i,i+#k-1) == k then
-							kernOffset = v
+					if font.kerning ~= nil then
+						for k,v in pairs(font.kerning) do
+							if text:sub(i,i+#k-1) == k then
+								kernOffset = v
+							end
 						end
 					end
 					local glyph = font.glyphs[line:sub(j,j)]
@@ -244,16 +266,19 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 						glyphX = glyphX + glyph.width + font.characterSpacing + kernOffset
 					end
 				end
+				glyphY = glyphY + font.height + font.lineSpacing
+
 			end
 		elseif horizontalAlignment == "right" then
 			for i,line in ipairs(lines) do
-				glyphX = x + wrapLimit - lineWidths[i]
-				glyphY = glyphY + font.height + font.lineSpacing
+				glyphX = wrapLimit - lineWidths[i]
 				for j=1,#line,1 do
 					local kernOffset = 0
-					for k,v in pairs(font.kerning) do
-						if text:sub(i,i+#k-1) == k then
-							kernOffset = v
+					if font.kerning ~= nil then
+						for k,v in pairs(font.kerning) do
+							if text:sub(i,i+#k-1) == k then
+								kernOffset = v
+							end
 						end
 					end
 					local glyph = font.glyphs[line:sub(j,j)]
@@ -263,16 +288,18 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 						glyphX = glyphX + glyph.width + font.characterSpacing + kernOffset
 					end
 				end
+				glyphY = glyphY + font.height + font.lineSpacing
 			end
 		elseif horizontalAlignment == "center" then
 			for i,line in ipairs(lines) do
-				glyphX = x + wrapLimit/2 - math.floor(lineWidths[i]/2)
-				glyphY = glyphY + font.height + font.lineSpacing
+				glyphX = wrapLimit/2 - math.floor(lineWidths[i]/2)
 				for j=1,#line,1 do
 					local kernOffset = 0
-					for k,v in pairs(font.kerning) do
-						if text:sub(i,i+#k-1) == k then
-							kernOffset = v
+					if font.kerning ~= nil then
+						for k,v in pairs(font.kerning) do
+							if text:sub(i,i+#k-1) == k then
+								kernOffset = v
+							end
 						end
 					end
 					local glyph = font.glyphs[line:sub(j,j)]
@@ -282,11 +309,12 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 						glyphX = glyphX + glyph.width + font.characterSpacing + kernOffset
 					end
 				end
+				glyphY = glyphY + font.height + font.lineSpacing
 			end
 		end
 
-		love.graphics.draw(batch,0,0)
-		batch:clear()
+		love.graphics.draw(batch,x,y)
+		batch:unbind()
 	else
 		love.graphics.print(text,x,y)
 	end

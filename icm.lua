@@ -15,9 +15,9 @@ end
 
 icm.getColor = function(r,g,b,a)
 	if not icm.inverted then
-		return {r=r,g=g,b=b,a=a}
+		return {r=r,g=g,b=b,a=a or 255}
 	else
-		return {r=255-r,g=255-g,b=255-b,a=a}
+		return {r=255-r,g=255-g,b=255-b,a=a or 255}
 	end
 end
 
