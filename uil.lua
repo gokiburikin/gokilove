@@ -2,6 +2,18 @@
 
 local uil = {}
 
+function uil.print(text,x,y,wrapLimit,alignment)
+	x = x or 0
+	y = y or 0
+	wrapLimit = wrapLimit or nil
+	alignment = alignment or "left"
+	if wrapLimit ~=- nil then
+		love.graphics.print(text,x,y)
+	else
+		love.graphics.printf(text,x,y,wrapLimit,alignment)
+	end
+end
+
 function uil.controlUnderPoint(control, x, y)
 	--[[if x >= control.left and x <= control.left + control.width and y >= control.top and y <= control.top+control.height then
 		return true
@@ -227,7 +239,7 @@ function uil.textPanel:draw()
 		if self.color ~= nil then
 			icm.setColor(self.color)
 		end
-		love.graphics.printf(self.text,0,y,self.tdtc.width, self.horizontalAlignment)
+		uil.print(self.text,0,y,self.tdtc.width, self.horizontalAlignment)
 	end
 	uil.control.draw(self)
 end

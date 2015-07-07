@@ -128,6 +128,7 @@ function ifl.get(key)
 end
 
 function ifl.print(text,x,y,key)
+	text = text .. ""
 	key = key or ifl.font
 	x = x or 0
 	y = y or 0
@@ -141,6 +142,7 @@ function ifl.print(text,x,y,key)
 		end
 		font.lastFunction = "print"
 		font.lastText = text
+		batch:clear()
 		local glyphX = 0
 		local glyphY = 0
 		local characterSpacing = font.characterSpacing
@@ -148,6 +150,7 @@ function ifl.print(text,x,y,key)
 		local height = font.height
 		local glyphs = font.glyphs
 		local kerning = font.kerning
+		batch:bind()
 		for i=1,#text,1 do
 			local character = text:sub(i,i)
 			if character == "\n" then
@@ -170,14 +173,15 @@ function ifl.print(text,x,y,key)
 				end
 			end
 		end
+		batch:unbind()
 		love.graphics.draw(batch,x,y)
-		batch:clear()
 	else
 		love.graphics.print(text,x,y)
 	end
 end
 
 function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key)
+	text = text .. ""
 	key = key or ifl.font
 	x = x or 0
 	y = y or 0
@@ -217,13 +221,15 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 			if character == " " then
 				nextBreakIndex = i
 				nextBreakWidth = lineWidth 
+				nextBreakWidthAfter = lineWidth 
 			end
 			if character == "\n" then
 				table.insert(lines, text:sub(lastBreakIndex,i))
-				table.insert(lineWidths, lineWidth - characterSpacing)
+				table.insert(lineWidths, lineWidth)
 				lastBreakIndex = i
 				nextBreakIndex = i
-				nextBreakWidth = lineWidth
+				nextBreakWidth = lineWidth 
+				nextBreakWidthAfter = lineWidth 
 				lineWidth = 0
 			elseif glyph ~= nil then
 				if kerning == nil then
@@ -238,21 +244,25 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 					end
 					lineWidth = lineWidth + glyph.width + characterSpacing + kernOffset
 				end
-				if lineWidth > wrapLimit and lastBreakIndex ~= nextBreakIndex then
+				if character == " " then
+					nextBreakIndex = i
+					nextBreakWidthAfter = lineWidth 
+				end
+				if lineWidth >= wrapLimit and lastBreakIndex ~= nextBreakIndex then
 					table.insert(lines, text:sub(lastBreakIndex,nextBreakIndex-1))
-					table.insert(lineWidths, nextBreakWidth - characterSpacing )
+					table.insert(lineWidths, nextBreakWidth- characterSpacing)
 					lineWidth = lineWidth - nextBreakWidthAfter
+					nextBreakWidth = lineWidth
+					nextBreakWidthAfter = lineWidth
+
 					lastBreakIndex = nextBreakIndex+1
+					nextBreakIndex = lastBreakIndex
 				end
 			end
-			if character == " " then
-				nextBreakIndex = i
-				nextBreakWidthAfter = lineWidth 
-			end
-			
+
 			if i == #text then
-				table.insert(lines, text:sub(lastBreakIndex,i))
-				table.insert(lineWidths, lineWidth - characterSpacing)
+				table.insert(lines, text:sub(lastBreakIndex,i-1))
+				table.insert(lineWidths, nextBreakWidth- characterSpacing)
 			end
 		end
 
@@ -272,7 +282,7 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 							for k,v in pairs(kerning) do
 								if text:sub(i,i+#k-1) == k then
 									kernOffset = v
-									break
+								break
 								end
 							end
 							glyphX = glyphX + glyph.width + characterSpacing + kernOffset
