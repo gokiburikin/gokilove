@@ -12,7 +12,7 @@ ssda.attach = function(filePath, x, y, width, height, name, registrationX, regis
 	width = width or image:getWidth() or 1
 	height = height or image:getHeight() or 1
 	registrationX = registrationX or 0
-	registrationY = registrationY or 0
+	registrationY = registrationY or registrationX
 	if ssda[name] == nil then
 		ssda[name] = {}
 		ssda[name].image = image
