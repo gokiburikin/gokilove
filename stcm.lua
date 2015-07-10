@@ -1,6 +1,7 @@
 --[[Simple Transformation Context Manager]]
 
 local stcm = {}
+stcm.floorValues = true
 function stcm.tdtc(x,y,width,height,rotation,scaleX, scaleY,registrationX, registrationY)
 	local tdtc = {}
 	tdtc.x = x or 0
@@ -37,15 +38,17 @@ function stcm.tdtc(x,y,width,height,rotation,scaleX, scaleY,registrationX, regis
 
 	tdtc.register = function(x,y)
 		tdtc.registrationX = x
-		tdtc.registrationY = y
+		tdtc.registrationY = y or x
 	end
 
 	tdtc.apply = function()
-		love.graphics.translate(tdtc.x - tdtc.width * tdtc.registrationX, tdtc.y - tdtc.height * tdtc.registrationY)
-		love.graphics.translate(tdtc.width * tdtc.registrationX,tdtc.height * tdtc.registrationY)
-		love.graphics.rotate(tdtc.rotation)
-		love.graphics.scale(tdtc.scaleX, tdtc.scaleY)
-		love.graphics.translate(-tdtc.width * tdtc.registrationX,-tdtc.height * tdtc.registrationY)
+		if stcm.floorValues then
+			love.graphics.translate(math.floor(tdtc.x - tdtc.width * tdtc.registrationX), math.floor(tdtc.y - tdtc.height * tdtc.registrationY))
+			love.graphics.translate(tdtc.width * tdtc.registrationX,tdtc.height * tdtc.registrationY)
+			love.graphics.rotate(tdtc.rotation)
+			love.graphics.scale(tdtc.scaleX, tdtc.scaleY)
+			love.graphics.translate(-tdtc.width * tdtc.registrationX,-tdtc.height * tdtc.registrationY)
+		end
 	end
 	
 	tdtc.copy = function(copy, registration)

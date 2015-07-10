@@ -14,6 +14,16 @@ function uil.print(text,x,y,wrapLimit,alignment)
 	end
 end
 
+function uil.setFont(font)
+	love.graphics.setFont(font)
+end
+
+function uil.setColor(color)
+	if type(color) == "table" then
+		love.graphics.setColor(color.r,color.g,color.b,color.a or 255)
+	end
+end
+
 function uil.controlUnderPoint(control, x, y)
 	--[[if x >= control.left and x <= control.left + control.width and y >= control.top and y <= control.top+control.height then
 		return true
@@ -96,11 +106,12 @@ function uil.control:ordered(drawOrder)
 	return ordered
 end
 
-function uil.control:attach( control, key )
+function uil.control:attach( control, key, layer )
 	key = key or control
 	self.controls[key] = control
 	control.id = key
 	control.parent = self
+	control.layer = layer or 0
 	self:layout()
 	return control
 end
@@ -228,7 +239,7 @@ function uil.textPanel:draw()
 	if self.text ~= nil then
 		local y = 0
 		if self.font ~= nil then
-			love.graphics.setFont(self.font)
+			uil.setFont(self.font)
 			local height = self.font:getWrap(self.text,self.tdtc.width)
 			if self.verticalAlignment == "middle" then
 				y = self.tdtc.height/2 - height/self.tdtc.width - self.font:getHeight()/2
