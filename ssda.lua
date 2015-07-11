@@ -2,8 +2,9 @@
 
 local ssda = {}
 ssda.images = {}
+ssda.sprites = {}
 
-ssda.attach = function(filePath, x, y, width, height, name, registrationX, registrationY)
+ssda.attach = function(filePath, x, y, width, height, key, registrationX, registrationY)
 	local image = ssda.images[filePath]
 	if image == nil then
 		image = love.graphics.newImage(filePath)
@@ -13,19 +14,19 @@ ssda.attach = function(filePath, x, y, width, height, name, registrationX, regis
 	height = height or image:getHeight() or 1
 	registrationX = registrationX or 0
 	registrationY = registrationY or registrationX
-	if ssda[name] == nil then
-		ssda[name] = {}
-		ssda[name].image = image
-		ssda[name].x = x
-		ssda[name].y = y
-		ssda[name].registrationX = registrationX
-		ssda[name].registrationY = registrationY
-		ssda[name].ox = width * registrationX
-		ssda[name].oy = height * registrationY
-		ssda[name].width = width
-		ssda[name].height = height
-		ssda[name].quad = love.graphics.newQuad(x, y, width, height, image:getDimensions())
-	end
+	ssda.sprites[key] = ssda.sprites[key] or {}
+	local sprite = {}
+	sprite.image = image
+	sprite.x = x
+	sprite.y = y
+	sprite.registrationX = registrationX
+	sprite.registrationY = registrationY
+	sprite.ox = width * registrationX
+	sprite.oy = height * registrationY
+	sprite.width = width
+	sprite.height = height
+	sprite.quad = love.graphics.newQuad(x, y, width, height, image:getDimensions())
+	table.insert(ssda.sprites[key],sprite)
 end
 
 ssda.attachSet = function(filePath, x, y, width, height, names, registrationX, registrationY )
@@ -40,8 +41,13 @@ ssda.attachImage = function(filePath, name, registrationX, registrationY)
 	ssda.attach(filePath, 0,0, nil, nil, name, registrationX, registrationY)
 end
 
-ssda.get = function(name)
-	return ssda.sprites[name]
+ssda.get = function(sprite)
+	if type(sprite) == "string" then
+		if ssda.sprites[sprite] ~= nil then
+			sprite = ssda.sprites[sprite][love.math.random(1,#ssda.sprites[sprite])]
+		end
+	end
+	return sprite
 end
 
 ssda.subQuad = function( name, left, top, right, bottom )
@@ -53,21 +59,22 @@ ssda.subQuad = function( name, left, top, right, bottom )
 	return quad
 end
 
-ssda.draw = function(name, x, y, r, sx, sy, ox, oy, kx, ky, quad )
-	if ssda[name] ~= nil then
+ssda.draw = function(sprite, x, y, r, sx, sy, ox, oy, kx, ky, quad )
+	if type(sprite) == "string" then
+		sprite = ssda.get(name)
+	end
+	if sprite ~= nil then
 		x = x or 0
 		y = y or 0
 		r = r or 0
 		sx = sx or 1
 		sy = sy or 1
-		ox = ox or ssda[name].ox
-		oy = oy or ssda[name].oy
+		ox = ox or sprite.ox
+		oy = oy or sprite.oy
 		kx = kx or 0
 		ky = ky or 0
-		quad = quad or ssda[name].quad
-		if  ssda[name] ~= nil then
-			love.graphics.draw(ssda[name].image, quad, x, y, r, sx, sy, ox, oy, kx, ky)
-		end
+		quad = quad or sprite.quad
+		love.graphics.draw(sprite.image, quad, x, y, r, sx, sy, ox, oy, kx, ky)
 	end
 end
 

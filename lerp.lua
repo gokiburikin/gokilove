@@ -33,7 +33,7 @@ function lerp.new(startValue,endValue,length,interpolatorFunction,elapsedFunctio
 		interpolator.accumulator = 0
 	end
 
-	interpolator.elapsed = elapsedFunction or function() 
+	interpolator.elapsed = elapsedFunction or function(interpolator) 
 		lerp.detach(interpolator.key or interpolator)
 	end
 
@@ -53,7 +53,7 @@ function lerp.newAuto(table,keys,startValue,endValue,length,interpolatorFunction
 		end
 		if interpolator.accumulator >= interpolator.length then
 			if not interpolator.hasElapsed then
-				interpolator.elapsed()
+				interpolator.elapsed(interpolator)
 				interpolator.hasElapsed = true
 			end
 		end

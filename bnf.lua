@@ -12,12 +12,13 @@ function bnf.detach(digits)
 	bnf.symbols[digits] = nil
 end
 
-function bnf.flatFormat(number)
-	return string.format("%.0f",number)
+function bnf.flatFormat(number,decimals)
+	decimals = decimals or 0
+	return string.format("%." .. decimals .. "f",number)
 end
 
-function bnf.format(number)
-	number = bnf.flatFormat(number)
+function bnf.format(number,decimals)
+	number = bnf.flatFormat(number,decimals)
 	local digits = #(number .. "") - bnf.precision
 	local truncated = 0
 	local symbol = ""

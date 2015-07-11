@@ -141,7 +141,11 @@ function ifl.set(key)
 	ifl.font = key
 end
 
-function ifl.get(key)
+function ifl.get()
+	return ifl.fonts[ifl.font]
+end
+
+function ifl.getFont(key)
 	return ifl.fonts[key]
 end
 

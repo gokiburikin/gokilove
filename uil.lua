@@ -217,7 +217,7 @@ function uil.panel:draw()
 end
 
 uil.textPanel = {}
-function uil.textPanel.new(x,y,width,height,font,text,backColor,foreColor,horizontalAlignment,verticalAlignment,autoSize)
+function uil.textPanel.new(x,y,width,height,font,text,backColor,foreColor,horizontalAlignment,autoSize)
 	local control = uil.control.new()
 	control.tdtc = stcm.tdtc(x,y,width,height)
 	control.font = font
@@ -225,7 +225,6 @@ function uil.textPanel.new(x,y,width,height,font,text,backColor,foreColor,horizo
 	control.color = foreColor
 	control.text = text
 	control.horizontalAlignment = horizontalAlignment or "left"
-	control.verticalAlignment = verticalAlignment or "top"
 	control.autoSize = autoSize or true
 	control.draw = uil.textPanel.draw
 	return control
@@ -240,12 +239,6 @@ function uil.textPanel:draw()
 		local y = 0
 		if self.font ~= nil then
 			uil.setFont(self.font)
-			local height = self.font:getWrap(self.text,self.tdtc.width)
-			if self.verticalAlignment == "middle" then
-				y = self.tdtc.height/2 - height/self.tdtc.width - self.font:getHeight()/2
-			elseif self.verticalAlignment == "bottom" then
-				y = self.tdtc.height - height/self.tdtc.width- self.font:getHeight()
-			end
 		end
 		if self.color ~= nil then
 			icm.setColor(self.color)
