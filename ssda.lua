@@ -3,6 +3,7 @@
 local ssda = {}
 ssda.images = {}
 ssda.sprites = {}
+ssda.findVisible = true
 
 ssda.attach = function(filePath, x, y, width, height, key, registrationX, registrationY)
 	local image = ssda.images[filePath]
@@ -26,6 +27,33 @@ ssda.attach = function(filePath, x, y, width, height, key, registrationX, regist
 	sprite.width = width
 	sprite.height = height
 	sprite.quad = love.graphics.newQuad(x, y, width, height, image:getDimensions())
+	if ssda.findVisible then
+		local data = love.image.newImageData(filePath)
+		local left = width
+		local top = height
+		local right = 0
+		local bottom = 0
+		for x=0,width-1,1 do
+			for y=0,height-1,1 do
+				local r,g,b,a = data:getPixel(x,y)
+				if a > 0 then
+					if x < left then
+						left = x
+					end
+					if y < top then
+						top = y
+					end
+					if x > right then
+						right = x
+					end
+					if  y > bottom then
+						bottom = y
+					end
+				end
+			end
+		end
+		sprite.visibleArea = {left=left,top=top,right=right,bottom=bottom}
+	end
 	table.insert(ssda.sprites[key],sprite)
 end
 
@@ -50,11 +78,13 @@ ssda.get = function(sprite)
 	return sprite
 end
 
-ssda.subQuad = function( name, left, top, right, bottom )
-	local sprite = ssda.get(name)
+ssda.subQuad = function( sprite, x, y, width, height )
+	if type(sprite) == "string" then
+		sprite = ssda.get(sprite)
+	end
 	local quad = nil
 	if sprite ~= nil then
-		quad = love.graphics.newQuad(x, y, width, height, image:getDimensions())
+		quad = love.graphics.newQuad(x, y, width, height, sprite.image:getDimensions())
 	end
 	return quad
 end
@@ -69,8 +99,8 @@ ssda.draw = function(sprite, x, y, r, sx, sy, ox, oy, kx, ky, quad )
 		r = r or 0
 		sx = sx or 1
 		sy = sy or 1
-		ox = ox or sprite.ox
-		oy = oy or sprite.oy
+		ox = ox or sprite.ox or 0
+		oy = oy or sprite.oy or 0
 		kx = kx or 0
 		ky = ky or 0
 		quad = quad or sprite.quad

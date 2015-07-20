@@ -19,7 +19,7 @@ end
 
 function bnf.format(number,decimals)
 	number = bnf.flatFormat(number,decimals)
-	local digits = #(number .. "") - bnf.precision
+	local digits = #(math.floor(tonumber(number)) .. "") - bnf.precision
 	local truncated = 0
 	local symbol = ""
 	for i=digits-1,1,-1 do
@@ -29,7 +29,11 @@ function bnf.format(number,decimals)
 			break
 		end
 	end
-	return (number .. ""):sub(1,digits-truncated+(bnf.precision)) .. symbol
+	local decimalTruncation = 0
+	if decimals > 0 then
+		decimalTruncation = decimals + 1
+	end
+	return (number .. ""):sub(1, digits - truncated + bnf.precision + decimalTruncation) .. symbol
 end
 
 bnf.attach("K",3)
