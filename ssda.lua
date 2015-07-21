@@ -52,7 +52,7 @@ ssda.attach = function(filePath, x, y, width, height, key, registrationX, regist
 				end
 			end
 		end
-		sprite.visibleArea = {left=left,top=top,right=right,bottom=bottom}
+		sprite.visibleArea = {left=left,top=top,right=right,bottom=bottom,width=right-left,height=bottom-top}
 	end
 	table.insert(ssda.sprites[key],sprite)
 end
@@ -91,7 +91,7 @@ end
 
 ssda.draw = function(sprite, x, y, r, sx, sy, ox, oy, kx, ky, quad )
 	if type(sprite) == "string" then
-		sprite = ssda.get(name)
+		sprite = ssda.get(sprite)
 	end
 	if sprite ~= nil then
 		x = x or 0

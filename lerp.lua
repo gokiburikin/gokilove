@@ -13,11 +13,18 @@ function lerp.new(startValue,endValue,length,interpolatorFunction,elapsedFunctio
 	interpolator.accumulator = 0
 	interpolator.interpolatorFunction = interpolatorFunction or function(t,b,c,d) return 0 end
 	interpolator.hasElapsed = false
+	interpolator.elapsed = elapsedFunction or function(interpolator) 
+		lerp.detach(interpolator.key or interpolator)
+	end
 
 	function interpolator.update(dt)
 		interpolator.accumulator = interpolator.accumulator + dt
 		if interpolator.accumulator > interpolator.length then
 			interpolator.accumulator = interpolator.length
+			if not interpolator.hasElapsed then
+				interpolator.hasElapsed = true
+				interpolator.elapsed(interpolator)
+			end
 		end
 	end
 
@@ -31,11 +38,15 @@ function lerp.new(startValue,endValue,length,interpolatorFunction,elapsedFunctio
 
 	function interpolator.reset()
 		interpolator.accumulator = 0
+		interpolator.hasElapsed = false
 	end
 
-	interpolator.elapsed = elapsedFunction or function(interpolator) 
-		lerp.detach(interpolator.key or interpolator)
+	function interpolator.set(value)
+		interpolator.accumulator = interpolator.length * (value / interpolator.endValue)
+		interpolator.hasElapsed = false
 	end
+
+	
 
 	return interpolator
 end
@@ -53,8 +64,8 @@ function lerp.newAuto(table,keys,startValue,endValue,length,interpolatorFunction
 		end
 		if interpolator.accumulator >= interpolator.length then
 			if not interpolator.hasElapsed then
-				interpolator.elapsed(interpolator)
 				interpolator.hasElapsed = true
+				interpolator.elapsed(interpolator)
 			end
 		end
 	end

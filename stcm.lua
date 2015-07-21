@@ -4,6 +4,19 @@ local stcm = {}
 stcm.floorValues = true
 function stcm.tdtc(x,y,width,height,rotation,scaleX, scaleY,registrationX, registrationY)
 	local tdtc = {}
+	tdtc.mt = {}
+	tdtc.mt.__index = function(table,key)
+		if key == "rx" then
+			return tdtc.x - tdtc.width * tdtc.registrationX
+		elseif key == "ry" then
+			return tdtc.y - tdtc.height * tdtc.registrationY
+		elseif key == "rw" then
+			return tdtc.width * tdtc.registrationX
+		elseif key == "rh" then
+			return tdtc.height * tdtc.registrationY
+		end
+	end
+	setmetatable(tdtc,tdtc.mt)
 	tdtc.x = x or 0
 	tdtc.y = y or 0
 	tdtc.width = width or 100

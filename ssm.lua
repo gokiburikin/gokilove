@@ -2,7 +2,7 @@
 
 local ssm = {}
 ssm.muted = false
-ssm.volume = .2
+ssm.volume = 1
 
 function ssm.attach(file,key,soundType)
 	soundType = soundType or "static"
