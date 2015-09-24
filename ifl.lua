@@ -3,28 +3,73 @@ local ifl = {}
 ifl.fonts = {}
 ifl.font = "default"
 
-function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kerning,separatorColor)
+function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,truncateSpace,scaleX,scaleY,kerning,separatorColor)
 	local separatorColor = {r=255,g=255,b=0,a=255}
 	local imageFont = {}
+	scaleX = scaleX or 1
+	scaleY =scaleY or 1
 	imageFont.imageData = love.image.newImageData(imagePath)
 
 	imageFont.glyphs = {}
-	local glyphIndex = 1
-	local currentGlyphLeft = -1
+	local glyphIndex = 0
 	local width = imageFont.imageData:getWidth()
 	local height = imageFont.imageData:getHeight()
 	
+	local glyphLeft = 0
+	local glyphRight = 0
+	local state = 0
 	for x=0,imageFont.imageData:getWidth()-1,1 do
 		local r,g,b,a = imageFont.imageData:getPixel(x,0)
 		if r == separatorColor.r and g == separatorColor.g and b == separatorColor.b and separatorColor.a == a then
 			for y=0,imageFont.imageData:getHeight()-1,1 do
-			imageFont.imageData:setPixel(x,y,0,0,0,0)
+				imageFont.imageData:setPixel(x,y,0,0,0,0)
 			end
-			if currentGlyphLeft ~= -1 then
-				imageFont.glyphs[fontString:sub(glyphIndex,glyphIndex)] = {quad=love.graphics.newQuad(currentGlyphLeft,0,x-currentGlyphLeft,height,width,height),width=x-currentGlyphLeft}
-				glyphIndex = glyphIndex + 1
+			if truncateSpace then
+				if fontString:sub(glyphIndex,glyphIndex) == " " then
+					glyphRight = x
+				end
+			else
+				glyphRight = x
 			end
-			currentGlyphLeft = x+1
+			if glyphIndex > 0 then
+				imageFont.glyphs[fontString:sub(glyphIndex,glyphIndex)] = {quad=love.graphics.newQuad(glyphLeft,0,glyphRight-glyphLeft,height,width,height),width=glyphRight-glyphLeft}
+			end
+			glyphLeft = x+1
+			glyphIndex = glyphIndex+1
+			state = 0
+		else
+			if truncateSpace == true and fontString:sub(glyphIndex,glyphIndex) ~= " " and state == 0 then
+				local subX = 0
+				while state == 0 and glyphLeft < width do
+					for subY=0,imageFont.imageData:getHeight()-1,1 do
+						local r,g,b,a = imageFont.imageData:getPixel(glyphLeft,subY)
+						if a ~= 0 then
+							state = 1
+							break
+						end
+					end
+					if state == 0 then
+						glyphLeft = glyphLeft + 1
+					end
+					glyphRight = glyphLeft
+				end
+			elseif truncateSpace == true and fontString:sub(glyphIndex,glyphIndex) ~= " " and state == 1 then
+				local empty = true
+				while empty and state == 1 and glyphRight < width do
+					for subY=0,imageFont.imageData:getHeight()-1,1 do
+						local r,g,b,a = imageFont.imageData:getPixel(glyphRight,subY)
+						if a ~= 0 then
+							empty = false
+							break
+						end
+					end
+					if empty == true then
+						state = 2
+					else
+						glyphRight = glyphRight + 1
+					end
+				end
+			end
 		end
 	end
 
@@ -63,40 +108,75 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 		return width
 	end
 
-	function imageFont.getLines(text,wrapLimit)
+	function imageFont.getLines(text,wrapLimit,key)
+		local font = ifl.fonts[key or ifl.font]
+		local lines = ifl.calculateLines(text,wrapLimit,nil,key)
 		local width = 0
-		local lineCount = 0
+		for k,line in ipairs(lines) do
+			if line.width  > width then
+				width = line.width
+			end
+		end
+		return width,#lines * (font.height + font.lineSpacing),#lines
+	end
+
+	function imageFont.getFitIndex(text,wrapLimit,heightLimit,key)
+		local fitIndex = #text
+		local lines,fitIndex = ifl.calculateLines(text,wrapLimit,heightLimit,key)
+		return fitIndex
+	end
+
+	ifl.fonts[key] = imageFont
+	return imageFont
+end
+
+function ifl.set(key)
+	ifl.font = key
+end
+
+function ifl.get(key)
+	return ifl.fonts[key or ifl.font]
+end
+
+function ifl.calculateLines(text,wrapLimit,heightLimit,key)
+	local text = text .. ""
+	local fitIndex = #text
+	local lines = {}
+	local font = ifl.fonts[key or ifl.font]
+	local wrapLimit = wrapLimit or 0
+	local heightLimit = heightLimit or 0
+	if font ~= nil then
 		local glyphX = 0
 		local glyphY = 0
-		local lines = {}
-		local lineWidths = {}
-		local lineSpacing = imageFont.lineSpacing
-		local characterSpacing = imageFont.characterSpacing
-		local kerning = imageFont.kerning
-		local height = imageFont.height
+		local lineSpacing = font.lineSpacing
+		local characterSpacing = font.characterSpacing
+		local kerning = font.kerning
+		local fontHeight = font.height
+		local glyphs = font.glyphs
+		local lineCount = 0
 
-		local lastBreakIndex = 1
-		local nextBreakIndex = 1
-		local nextBreakWidth = 0
-		local nextBreakWidthAfter = 0
+		local breakIndex = 1
+		local breakWidth = 0
+		local lineBreakIndex = 1
 		local lineWidth = 0
-		
+
 		for i=1,#text,1 do
 			local character = text:sub(i,i)
-
-			local glyph = imageFont.glyphs[character]
+			local glyph = glyphs[character]
 
 			if character == " " then
-				nextBreakIndex = i
-				nextBreakWidth = lineWidth 
-				nextBreakWidthAfter = lineWidth 
+				breakIndex = i
+				breakWidth = lineWidth
 			end
+
 			if character == "\n" then
 				lineCount = lineCount + 1
-				lastBreakIndex = i
-				nextBreakIndex = i
-				nextBreakWidth = lineWidth 
-				nextBreakWidthAfter = lineWidth 
+				lines[lineCount] = {}
+				lines[lineCount].text = text:sub(lineBreakIndex,i)
+				lines[lineCount].width = lineWidth
+				lineBreakIndex = i
+				breakIndex = i
+				breakWidth = lineWidth
 				lineWidth = 0
 			elseif glyph ~= nil then
 				if kerning == nil then
@@ -111,42 +191,28 @@ function ifl.attach(imagePath,key,fontString,characterSpacing,lineSpacing,kernin
 					end
 					lineWidth = lineWidth + glyph.width + characterSpacing + kernOffset
 				end
-				if character == " " then
-					nextBreakIndex = i
-					nextBreakWidthAfter = lineWidth 
-				end
-				if lineWidth >= wrapLimit and lastBreakIndex ~= nextBreakIndex then
+				if lineWidth >= wrapLimit then
 					lineCount = lineCount + 1
-					lineWidth = lineWidth - nextBreakWidthAfter
-					nextBreakWidth = lineWidth
-					nextBreakWidthAfter = lineWidth
-
-					lastBreakIndex = nextBreakIndex+1
-					nextBreakIndex = lastBreakIndex
+					if fitIndex == #text and (lineCount+1) * (fontHeight + lineSpacing) > heightLimit then
+						fitIndex = breakIndex
+					end
+					lines[lineCount] = {}
+					lines[lineCount].text = text:sub(lineBreakIndex,breakIndex-1)
+					lines[lineCount].width = breakWidth
+					lineWidth = lineWidth - breakWidth
+					lineBreakIndex = breakIndex+1
 				end
 			end
 
 			if i == #text then
 				lineCount = lineCount + 1
+				lines[lineCount] = {}
+				lines[lineCount].text = text:sub(lineBreakIndex,i)
+				lines[lineCount].width = lineWidth - characterSpacing
 			end
 		end
-		return width,lineCount * (imageFont.height + lineSpacing),lineCount
 	end
-
-	ifl.fonts[key]  = imageFont
-	return imageFont
-end
-
-function ifl.set(key)
-	ifl.font = key
-end
-
-function ifl.get()
-	return ifl.fonts[ifl.font]
-end
-
-function ifl.getFont(key)
-	return ifl.fonts[key]
+	return lines,fitIndex
 end
 
 function ifl.print(text,x,y,key)
@@ -202,43 +268,8 @@ function ifl.print(text,x,y,key)
 	end
 end
 
-function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key)
-	local text = text .. ""
-	local font = ifl.fonts[key or ifl.font]
-	local x = x or 0
-	local y = y or 0
-	local wrapLimit = wrapLimit or 0
-	local horizontalAlignment = horizontalAlignment or "left"
-	local verticalAlignment = verticalAlignment or "top"
-	if font ~= nil then
-		local batch = font.batch
-		if text == font.lastText and font.lastFunction == "printf" and horizontalAlignment == font.lastAlignment and wrapLimit == font.lastWrapLimit then
-			love.graphics.draw(batch,x,y)
-		else
-			font.lastFunction = "printf"
-			font.lastAlignment = horizontalAlignment
-			font.lastText = text
-			font.lastWrapLimit = wrapLimit
 
-			local glyphX = 0
-			local glyphY = 0
-			local lines = {}
-			local lineWidths = {}
-			local lineSpacing = font.lineSpacing
-			local characterSpacing = font.characterSpacing
-			local kerning = font.kerning
-			local height = font.height
-			local glyphs = font.glyphs
-
-			local lastBreakIndex = 1
-			local nextBreakIndex = 1
-			local nextBreakWidth = 0
-			local nextBreakWidthAfter = 0
-			local lineWidth = 0
-			local totalWidth = 0
-			local lineCount = 0
-
-			--[[local colorCodes = {}
+--[[local colorCodes = {}
 			local found = text:find("\127")
 			while found ~= nil do
 				--text:gsub(text:sub(found,found+9),"")
@@ -247,97 +278,70 @@ function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key
 				found = text:find("\127")
 			end]]
 
-			for i=1,#text,1 do
-				local character = text:sub(i,i)
-				local glyph = glyphs[character]
+function ifl.printf(text,x,y,wrapLimit,horizontalAlignment,verticalAlignment,key)
+	local text = text .. ""
+	if #text > 0 then
+		local font = ifl.fonts[key or ifl.font]
+		local x = x or 0
+		local y = y or 0
+		local wrapLimit = wrapLimit or 0
+		local horizontalAlignment = horizontalAlignment or "left"
+		local verticalAlignment = verticalAlignment or "top"
+		if font ~= nil then
+			local batch = font.batch
+			if text == font.lastText and font.lastFunction == "printf" and horizontalAlignment == font.lastAlignment and wrapLimit == font.lastWrapLimit then
+				love.graphics.draw(batch,x,y)
+			else
+				font.lastFunction = "printf"
+				font.lastAlignment = horizontalAlignment
+				font.lastText = text
+				font.lastWrapLimit = wrapLimit
 
-				if character == " " then
-					nextBreakIndex = i
-					nextBreakWidth = lineWidth 
-					nextBreakWidthAfter = lineWidth 
-				end
+				local fontHeight = font.height
+				local characterSpacing = font.characterSpacing
+				local lineSpacing = font.lineSpacing
+				local glyphX = 0
+				local glyphY = 0
+				local glyphs = font.glyphs
+				local totalWidth = 0
+				local lines = ifl.calculateLines(text,wrapLimit)
 
-				if character == "\n" then
-					lineCount = lineCount + 1
-					lines[lineCount] = text:sub(lastBreakIndex,i)
-					lineWidths[lineCount] = lineWidth
-					lastBreakIndex = i
-					nextBreakIndex = i
-					nextBreakWidth = lineWidth 
-					nextBreakWidthAfter = lineWidth 
-					lineWidth = 0
-				elseif glyph ~= nil then
-					if kerning == nil then
-						lineWidth = lineWidth + glyph.width + characterSpacing 
-					else
-						local kernOffset = 0
-						for k,v in pairs(kerning) do
-							if text:sub(i,i+#k-1) == k then
-								kernOffset = v
-								break
-							end
-						end
-						lineWidth = lineWidth + glyph.width + characterSpacing + kernOffset
+				batch:clear()
+				for i,line in ipairs(lines) do
+					if horizontalAlignment == "left" then
+						glyphX = 0
+					elseif horizontalAlignment == "right" then
+						glyphX = math.floor(wrapLimit - lines[i].width)
+					elseif horizontalAlignment == "center" then
+						glyphX = math.floor(wrapLimit/2 - math.floor(lines[i].width/2))
 					end
-					if character == " " then
-						nextBreakIndex = i
-						nextBreakWidthAfter = lineWidth 
-					end
-					if lineWidth >= wrapLimit and lastBreakIndex ~= nextBreakIndex then
-						lineCount = lineCount + 1
-						lines[lineCount] = text:sub(lastBreakIndex,nextBreakIndex-1)
-						lineWidths[lineCount] = nextBreakWidth- characterSpacing
-						lineWidth = lineWidth - nextBreakWidthAfter
-						nextBreakWidth = lineWidth
-						nextBreakWidthAfter = lineWidth
-
-						lastBreakIndex = nextBreakIndex+1
-						nextBreakIndex = lastBreakIndex
-					end
-				end
-
-				if i == #text then
-					lineCount = lineCount + 1
-					lines[lineCount] = text:sub(lastBreakIndex,i)
-					lineWidths[lineCount] = lineWidth - characterSpacing
-				end
-			end
-
-			batch:clear()
-			for i,line in ipairs(lines) do
-				if horizontalAlignment == "left" then
-					glyphX = 0
-				elseif horizontalAlignment == "right" then
-					glyphX = wrapLimit - lineWidths[i]
-				elseif horizontalAlignment == "center" then
-					glyphX = wrapLimit/2 - math.floor(lineWidths[i]/2)
-				end
-				for j=1,#line,1 do
-					local character = line:sub(j,j)
-					local glyph = glyphs[character]
-					if glyph ~= nil then
-						batch:add(glyph.quad,glyphX,glyphY)
-						if kerning == nil then
-							glyphX = glyphX + glyph.width + characterSpacing 
-						else
-							local kernOffset = 0
-							for k,v in pairs(kerning) do
-								if text:sub(i,i+#k-1) == k then
-									kernOffset = v
-								break
+					for j=1,#line.text,1 do
+						local character = line.text:sub(j,j)
+						local glyph = glyphs[character]
+						if glyph ~= nil then
+							batch:add(glyph.quad,glyphX,glyphY)
+							if kerning == nil then
+								glyphX = glyphX + glyph.width + characterSpacing 
+							else
+								local kernOffset = 0
+								for k,v in pairs(kerning) do
+									if text:sub(i,i+#k-1) == k then
+										kernOffset = v
+									break
+									end
 								end
+								glyphX = glyphX + glyph.width + characterSpacing + kernOffset
 							end
-							glyphX = glyphX + glyph.width + characterSpacing + kernOffset
 						end
 					end
+					glyphY = glyphY + fontHeight + lineSpacing
+					if lines[i].width > totalWidth then
+						totalWidth = lines[i].width
+					end
 				end
-				glyphY = glyphY + height + lineSpacing
-				if lineWidths[i] > totalWidth then
-					totalWidth = lineWidths[i]
-				end
+				love.graphics.draw(batch,x,y)
+				return totalWidth,#lines * (fontHeight + lineSpacing),#lines
 			end
-			love.graphics.draw(batch,x,y)
-			return totalWidth,lineCount * (height + lineSpacing),lineCount
 		end
 	end
 end
